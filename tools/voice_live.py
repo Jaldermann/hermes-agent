@@ -144,6 +144,17 @@ def resolve_gpt_live_status() -> dict[str, Any]:
     }
 
 
+def _live_voice_payload(name: str) -> dict[str, str] | str:
+    """Custom GPT-Live voices (voice_*) must be sent as an object; built-in names stay strings.
+
+    Upstream bug: the API rejects a bare ``voice_*`` string with ``Invalid 'audio.voice':
+    a value of type 'string' was provided, but a value of type 'object' is expected.``
+    """
+    if name.startswith("voice_"):
+        return {"id": name}
+    return name
+
+
 def build_session_config(history: Optional[list] = None) -> dict[str, Any]:
     """The ``session`` object for ``POST /v1/live/sessions`` (client delegation, WebRTC — the
     transport negotiates the audio format, so none is set)."""
@@ -151,7 +162,7 @@ def build_session_config(history: Optional[list] = None) -> dict[str, Any]:
     config: dict[str, Any] = {
         "model": str(live.get("model") or DEFAULT_LIVE_MODEL),
         "instructions": live_instructions(live),
-        "audio": {"output": {"voice": str(live.get("voice") or DEFAULT_LIVE_VOICE)}},
+        "audio": {"output": {"voice": _live_voice_payload(str(live.get("voice") or DEFAULT_LIVE_VOICE))}},
         "delegation": {"type": "client"},
     }
     if history:
